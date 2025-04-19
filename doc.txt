@@ -1,0 +1,90 @@
+Jetpack Game Server Protocol Documentation
+
+1. Connection Establishment
+---------------------------
+- Server listens on specified port (default: 8080)
+- Max clients: 2
+
+Client Connection Sequence:
+1. Client connects to server
+2. Server responds: "WELCOME ID:<player_id>\n\r"
+3. Client sends: "CONNECT <player_name>"
+4. Server responds: "ID <player_id>"
+
+2. Game Setup
+-------------
+- Clients must send "READY" when prepared to start
+- When all clients are ready, server broadcasts "START"
+
+3. Game Commands
+----------------
+All commands end with "\n\r"
+
+Client -> Server:
+- READY - Indicates player is ready to start
+- MOVE <x> <y> - Updates player position
+- MAP - Requests current map
+- COIN <score> - Updates player score
+- DEATH - Reports player death
+- QUIT - Disconnects from game
+
+Server -> Client:
+- START - Signals game start (broadcast)
+- WAIT - Waiting for other players to be ready
+- UPDATE ID:<id> X:<x> Y:<y> - Player position update (broadcast)
+- MAP ID:<id> MAP:<map_data> - Sends map to requesting player
+- SCORE ID:<id> SCORE:<score> - Score update (broadcast)
+- DEATH ID:<id> - Player death notification (broadcast)
+- DISCONNECT CLIENT_ID:<fd> - Player disconnect notification
+
+4. Error Messages
+-----------------
+- ERR FULL - Server at max capacity
+- ERR UNKNOWN_COMMAND - Invalid command received
+- ERR CLIENT_NOT_FOUND - Client not registered
+- ERR GAME_NOT_STARTED - Command sent before game start
+- ERR INVALID_PLAYER - Player ID not recognized
+
+5. Game Flow
+------------
+1. All clients connect and send READY
+2. Server broadcasts START
+3. Players send MOVE updates during game
+4. Server broadcasts position updates
+5. Players collect coins (COIN command)
+6. On death, player sends DEATH
+7. Game ends when one player remains
+8. Players can QUIT at any time
+
+6. Data Formats
+---------------
+- Positions: integers (x, y coordinates)
+- Scores: integer values
+- Map: multiline string with newlines
+- Player IDs: integers (1-2)
+
+7. Disconnection Handling
+-------------------------
+- Server detects disconnections automatically
+- Notifies remaining players with DISCONNECT message
+- Game continues with remaining players
+
+8. Example Session
+------------------
+Client 1:
+  Received: "WELCOME ID:1"
+  Sends: "CONNECT Player1"
+  Received: "ID 1"
+  Sends: "READY"
+  Received: "START"
+  Sends: "MOVE 10 20"
+  
+Client 2:
+  Received: "WELCOME ID:2"
+  Sends: "CONNECT Player2"
+  Received: "ID 2"
+  Sends: "READY"
+  Received: "START"
+  Received: "UPDATE ID:1 X:10 Y:20"
+  Sends: "MAP"
+  Received: "MAP ID:2 MAP:<map_data>"
