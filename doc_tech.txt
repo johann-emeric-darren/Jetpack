@@ -1,0 +1,312 @@
+Jetpack - Documentation du Jeu Graphique et Documentation du Comportement Serveur
+Format : RFC-like (80 colonnes max)
+Fichier : doc_tech.txt
+
+STRUCTURE DES DOSSIERS ET FICHIERS
+
+                SourceFile/
+                │
+                ├── ServerFile/
+                │   ├── main.cpp
+                │   └── serveur.cpp
+                │
+                ├── ClientFile/
+                │   ├── fichiers de connexion et de traitement des arguments
+                │
+                └── JetPackGameFile/
+                    └── JetPack.hpp
+
+-------------------------------Jeu Graphique-----------------------------------
+1. INTRODUCTION
+
+    Ce document présente la logique du jeu Jetpack développée avec la bibliothèque
+    SFML. Il détaille les composants graphiques, les objets du jeu, les animations,
+    la gestion des entrées clavier, les collisions et la physique simple.
+
+2. STRUCTURE GLOBALE
+
+    La logique est centralisée dans une classe qui contient toutes les fonctions
+    et données utiles. Ce document présente ces fonctions individuellement,
+    en expliquant leur rôle, leur logique et leur interaction avec les autres.
+
+3. INITIALISATION
+
+    3.1 initTexture()
+
+    Cette fonction charge les ressources visuelles nécessaires au jeu :
+    - background.png : image du fond
+    - player_sprite_sheet_court.png : sprite du joueur en course
+    - player_sprite_sheet_saute.png : sprite du joueur lorsqu’il saute
+    - zapper_sprite_sheet.png : sprite animé des zappeurs (obstacles)
+    - coins_sprite_sheet.png : sprite animé des pièces à collecter
+
+    Elle retourne 0 si tous les fichiers sont chargés correctement, ou 84 si
+    l’un d’eux est manquant.
+
+    3.2 setTextureToSprite()
+
+        Associe chaque texture aux objets visuels correspondants :
+        - Applique les textures sur les sprites (joueur, fond, pièces,zappeurs)
+        - Définit les zones de l’image à afficher avec les rectangles (IntRect)
+        Cela permet d’afficher uniquement une partie d’un sprite sheet (utile
+        pour l’animation).
+
+    3.3 init_game_data()
+
+        Initialise les dimensions visibles de chaque sprite :
+        - rect pour le joueur (134x128)
+        - coinRect pour les pièces (192x170)
+        - zapperRect pour les zappeurs (105x122)
+
+        Configure également :
+        - la gravité du jeu (500)
+        - la vitesse de défilement des objets (100)
+        - la force de saut du joueur (-250)
+        - la position initiale verticale du joueur (y = 450)
+
+    3.4 initPosition()
+
+        Positionne les deux arrière-plans à gauche de l’écran pour permettre
+        le défilement infini. background1 est placé à 0,0 et background2 juste
+        après le premier fond.
+
+    3.5 playSound(std::string)
+
+        Charge un fichier son et le joue en boucle.
+        Utilisé pour jouer une musique de fond continue pendant la partie.
+
+4. AFFICHAGE ET MOTEUR PRINCIPAL
+
+    4.1 init_window()
+
+        Fonction principale du moteur graphique :
+        - Crée une fenêtre de jeu (900x600)
+        - Charge et positionne les objets à partir d'une carte codée en texte
+        - Démarre une boucle infinie (jusqu’à fermeture de la fenêtre)
+        - Gère les entrées clavier (barre espace pour sauter)
+        - Met à jour le joueur, les pièces, les zappeurs, et le fond
+        - Gère les collisions et rafraîchit l’écran à chaque frame
+
+    Chaque image est redessinée après effacement de l’ancienne.
+
+    4.2 backgroundMove()
+
+        Fait défiler les deux fonds vers la gauche en continu.
+        Quand un fond sort complètement de l’écran, il est replacé à droite
+        du second fond pour créer une illusion de déplacement sans fin.
+
+    4.3 loadMapObjects()
+
+        Interprète une carte représentée sous forme de tableau de chaînes :
+        - ‘c’ représente une pièce (coin)
+        - ‘e’ représente un zappeur (laser)
+        Chaque élément est converti en sprite placé aux coordonnées x/y calculées
+        en fonction de sa position dans la grille.
+
+5. ANIMATIONS
+
+    5.1 movePlayerSprite()
+
+        Anime le joueur en course :
+        - Change la portion visible du sprite (rect.left) toutes les 0.1s
+        - Fait défiler les frames du sprite sheet de manière cyclique
+
+    5.2 moveCoinSprite()
+
+        Anime les pièces :
+        - Alterne les frames du sprite sheet des pièces toutes les 0.07s
+        - Applique la nouvelle image à chaque pièce sur la carte
+
+    5.3 moveZapperSprite()
+
+        Anime les zappeurs (obstacles) :
+        - Change l’image affichée toutes les 0.09s
+        - Applique la nouvelle frame à chaque zappeur
+
+6. MOUVEMENT DU JOUEUR
+
+    6.1 playerIsJumping()
+
+        Gère le comportement du saut :
+        - Si la touche espace est pressée, applique une force verticale négative
+        - La gravité augmente la vitesse vers le bas avec le temps
+        - Quand le joueur retouche le sol (y >= 450), le saut s’arrête
+        - L’image du joueur change selon s’il saute ou non
+
+7. COLLISIONS
+
+    7.1 checkCoinCollision()
+
+        Pour chaque pièce :
+        - Vérifie si le joueur la touche (collision entre sprites)
+        - Si oui, supprime la pièce (elle est collectée)
+
+    7.2 checkZapperCollision()
+
+        Pour chaque zappeur :
+        - Vérifie s’il touche le joueur
+        - Si oui, retourne true (collision détectée)
+        - Sinon, retourne false
+
+        Peut être utilisé pour déclencher une fin de partie ou une pénalité.
+
+8. CONCLUSION
+
+    Le moteur graphique Jetpack utilise SFML pour :
+    - Afficher des images et sprites animés
+    - Gérer les déplacements, sauts et défilements
+    - Animer les objets à l’aide de timers
+    - Détecter les collisions en temps réel
+
+    Chaque fonction a un rôle clair et bien séparé.
+    Cette architecture permet d’ajouter facilement d’autres objets ou règles
+    de jeu sans modifier la structure globale.
+
+    Cette logique est indépendante du réseau : elle peut être utilisée
+    dans un client multijoueur, un jeu solo ou un éditeur de niveaux.
+
+------------------------------SERVEUR------------------------------------------
+
+1. INTRODUCTION
+
+    Cette partie du document décrit le fonctionnement du serveur du jeu Jetpack. Le serveur
+    écoute les connexions, gère les joueurs, traite les commandes et envoie les
+    réponses appropriées aux clients. Il utilise les sockets TCP avec `poll()`
+    pour gérer plusieurs connexions simultanées.
+
+2. FONCTIONNEMENT GÉNÉRAL
+
+    Le serveur est lancé depuis `main.cpp`, qui instancie un objet JetpackServer
+    et appelle la méthode `run()`. L’essentiel de la logique réseau est dans
+    `serveur.cpp`.
+
+3. main.cpp
+
+    int main(int argc, char **argv)
+    Instancie le serveur avec les arguments (port, map, debug).
+    Appelle `server.run()` pour démarrer la boucle d’attente.
+
+4. serveur.cpp
+
+    4.1 JetpackServer::setup_server()
+
+        - Crée un socket TCP
+        - Configure l’adresse (IPv4, port donné, toutes les interfaces)
+        - Fait un bind sur le port
+        - Active l’écoute avec `listen()`
+        - Initialise les slots `pollfd` pour la surveillance des sockets
+        - Affiche un message confirmant que le serveur est prêt
+
+    4.2 JetpackServer::accept_new_connection()
+
+        - Accepte un nouveau client via `accept()`
+        - Cherche une place libre dans la liste de clients (`pollfd`)
+        - Si une place est trouvée, crée un objet `Player_t` :
+        - Attribue un ID, initialise position et statut
+        - Ajoute le joueur à la liste `_players`
+        - Envoie un message de bienvenue et les instructions
+
+    4.3 JetpackServer::send_guide(int client_fd)
+
+        - Envoie un texte d’aide au client avec les commandes disponibles :
+        - CONNECT, READY, MOVE, QUIT, etc.
+
+    4.4 JetpackServer::send_response(int fd, const std::string& response)
+
+        - Envoie un message formaté à un client
+        - Ajoute un retour chariot s’il manque
+
+    4.5 JetpackServer::send_message_all(const std::string& message)
+
+    - Envoie un message à **tous** les clients connectés
+
+    4.6 JetpackServer::handle_client_message(int client_fd)
+
+        - Lit les données du client via `read()`
+        - Si rien n’est lu : considère comme une déconnexion
+        - Sinon : appelle `process_command()` avec la commande reçue
+
+    4.7 JetpackServer::process_command(int client_fd, const std::string& command)
+
+        - Analyse le texte pour déterminer quelle commande a été reçue
+        - Appelle la bonne fonction :
+        - `handle_connect()` si CONNECT
+        - `handle_ready()` si READY
+        - `handle_event()` si EVENT
+        - `handle_disconnect()` si QUIT
+        - Envoie une erreur sinon
+
+    4.8 JetpackServer::handle_connect(int client_fd, const std::string& name)
+
+        - Associe un nom au joueur
+        - Envoie son ID et la map actuelle
+        - Notifie les autres joueurs de sa connexion
+
+    4.9 JetpackServer::handle_ready(int client_fd)
+
+        - Vérifie si les deux joueurs sont prêts
+        - Si oui, démarre la partie (envoie START)
+        - Sinon, envoie WAIT
+
+    4.10 JetpackServer::handle_event(int client_fd, EventType event)
+
+        - Récupère le joueur
+        - Appelle les fonctions pour :
+        - Déplacer (`handle_update_move`)
+        - Vérifier la collision (`handle_collision`)
+
+    4.11 JetpackServer::handle_update_move(EventType event, Player_t player)
+
+        - Si `UP` : décrémente `y`
+        - Si `DOWN` : incrémente `y`
+        - Incrémente `x` à chaque déplacement
+        - Si `x` dépasse la fin de la carte : boucle à 0
+
+    4.12 JetpackServer::handle_collision(Player_t player)
+
+        - Vérifie la case actuelle sur la carte :
+        - 'e' : le joueur meurt (DEATH)
+        - 'c' : le joueur gagne un point (UPDATE)
+
+    4.13 JetpackServer::handle_disconnect(int client_fd)
+
+        - Supprime le joueur de la liste
+        - Notifie les autres de sa déconnexion
+        - Libère le slot `pollfd` correspondant
+
+    4.14 JetpackServer::JetpackServer(int argc, char **argv)
+
+        - Initialise les variables
+        - Récupère les arguments (`get_args`)
+        - Charge la carte (`load_map`)
+        - Lance la configuration réseau (`setup_server`)
+
+    4.15 JetpackServer::load_map(const std::string filename)
+
+        - Ouvre un fichier texte contenant la carte
+        - Stocke chaque ligne dans `_map_lines`
+        - Crée une chaîne `_map` utilisée pour transmission
+
+    4.16 JetpackServer::get_args(int argc, char **argv)
+
+        - Vérifie les arguments :
+        - `-p <port>` pour le port
+        - `-m <map>` pour le fichier map
+        - `-d` pour activer le mode debug
+        - En cas d’erreur : affiche un message et quitte
+
+    4.17 JetpackServer::run()
+
+            - Boucle infinie avec `poll()`
+            - Surveille les connexions entrantes
+            - Accepte les nouveaux clients
+            - Lit les messages des clients connectés
+
+5. CONCLUSION
+
+    Le serveur Jetpack gère un nombre maximum de clients via `poll()`.
+    Chaque client est traité indépendamment.
+    Le serveur suit un protocole simple basé sur des messages textuels :
+    CONNECT, READY, EVENT, QUIT.
+
+    Cette architecture permet de créer un jeu multijoueur réactif et maintenable.
